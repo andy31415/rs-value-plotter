@@ -9,6 +9,7 @@ use std::thread;
 use tracing::{error, info, warn};
 
 pub struct MonitorApp {
+    include_y: Vec<f64>,
     measurements: Arc<Mutex<MeasurementWindow>>,
 }
 
@@ -18,6 +19,7 @@ impl MonitorApp {
             measurements: Arc::new(Mutex::new(MeasurementWindow::new_with_look_behind(
                 look_behind,
             ))),
+            include_y: Vec::new(),
         }
     }
 }
@@ -47,7 +49,12 @@ impl epi::App for MonitorApp {
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &epi::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui::plot::Plot::new("measurements").show(ui, |plot_ui| {
+            let mut plot = egui::plot::Plot::new("measurements");
+            for y in self.include_y.iter() {
+                plot = plot.include_y(*y);
+            }
+
+            plot.show(ui, |plot_ui| {
                 plot_ui.line(egui::plot::Line::new(
                     self.measurements.lock().unwrap().into_plot_values(),
                 ));
@@ -67,6 +74,9 @@ struct Args {
     /// Name of the person to greet
     #[clap(short, long, default_value_t = 1000)]
     window_size: usize,
+
+    #[clap(short, long)]
+    include_y: Vec<f64>,
 }
 
 fn main() {
@@ -77,7 +87,10 @@ fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let app = MonitorApp::new(args.window_size);
+    let mut app = MonitorApp::new(args.window_size);
+
+    app.include_y = args.include_y.clone();
+
     let native_options = eframe::NativeOptions::default();
 
     let monitor_ref = app.measurements.clone();
