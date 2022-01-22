@@ -2,13 +2,34 @@ use std::collections::VecDeque;
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub struct Measurement {
-    pub x: f32,
-    pub y: f32,
+    pub x: f64,
+    pub y: f64,
 }
 
 impl Measurement {
-    fn new(x: f32, y: f32) -> Self {
+    pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
+    }
+}
+
+struct MeasurementIntoIterator<Iter> {
+    iter: Iter,
+}
+
+impl<Iter> Iterator for MeasurementIntoIterator<Iter>
+where
+    Iter: Iterator<Item = Measurement>,
+{
+    type Item = egui::plot::Value;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.iter.next() {
+            Some(measurement) => Some(egui::plot::Value {
+                x: measurement.x,
+                y: measurement.y,
+            }),
+            None => None,
+        }
     }
 }
 
@@ -19,14 +40,14 @@ pub struct MeasurementWindow {
 }
 
 impl MeasurementWindow {
-    fn new_with_look_beind(look_behind: usize) -> Self {
+    pub fn new_with_look_beind(look_behind: usize) -> Self {
         Self {
             values: VecDeque::new(),
             look_behind,
         }
     }
 
-    fn add(&mut self, measurement: Measurement) {
+    pub fn add(&mut self, measurement: Measurement) {
         if let Some(last) = self.values.back() {
             if measurement.x < last.x {
                 self.values.clear()
@@ -35,7 +56,7 @@ impl MeasurementWindow {
 
         self.values.push_back(measurement);
 
-        let limit = self.values.back().unwrap().x - (self.look_behind as f32);
+        let limit = self.values.back().unwrap().x - (self.look_behind as f64);
         while let Some(front) = self.values.front() {
             if front.x >= limit {
                 break;
@@ -85,7 +106,7 @@ mod test {
         let mut w = MeasurementWindow::new_with_look_beind(100);
 
         for x in 1..=20 {
-            w.add(Measurement::new((x as f32) * 10.0, x as f32));
+            w.add(Measurement::new((x as f64) * 10.0, x as f64));
         }
 
         assert_eq!(
