@@ -1,18 +1,6 @@
 use std::collections::VecDeque;
 
-#[derive(Debug, PartialEq, PartialOrd)]
-pub struct Measurement {
-    pub x: f64,
-    pub y: f64,
-}
-
-unsafe impl Send for Measurement {}
-
-impl Measurement {
-    pub fn new(x: f64, y: f64) -> Self {
-        Self { x, y }
-    }
-}
+pub type Measurement = egui::plot::Value;
 
 #[derive(Debug)]
 pub struct MeasurementWindow {
@@ -47,11 +35,7 @@ impl MeasurementWindow {
     }
 
     pub fn into_plot_values(&self) -> egui::plot::Values {
-        egui::plot::Values::from_values_iter(
-            self.values
-                .iter()
-                .map(|m| egui::plot::Value { x: m.x, y: m.y }),
-        )
+        egui::plot::Values::from_values_iter(self.values.iter().map(|m| m.clone()))
     }
 }
 
