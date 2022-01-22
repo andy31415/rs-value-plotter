@@ -1,15 +1,24 @@
-#![forbid(unsafe_code)]
-#![warn(clippy::all, rust_2018_idioms)]
-
 mod measurements;
 
+use crate::measurements::MeasurementWindow;
 use eframe::{egui, epi};
 
-pub struct MonitorApp {}
+use std::io::BufRead;
+use std::sync::*;
+use std::thread;
+use tracing::{error, info, warn};
 
-impl Default for MonitorApp {
-    fn default() -> Self {
-        Self {}
+pub struct MonitorApp {
+    measurements: Arc<Mutex<MeasurementWindow>>,
+}
+
+impl MonitorApp {
+    fn new(look_behind: usize) -> Self {
+        Self {
+            measurements: Arc::new(Mutex::new(MeasurementWindow::new_with_look_behind(
+                look_behind,
+            ))),
+        }
     }
 }
 
@@ -39,21 +48,83 @@ impl epi::App for MonitorApp {
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &epi::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::plot::Plot::new("measurements").show(ui, |plot_ui| {
-                let values_iter = (-100..100).map(|x| {
-                    let x = (x as f32) / 10.0;
-                    egui::plot::Value::new(x, 2. * x * x - 3. * x + 2.)
-                });
-
-                plot_ui.line(egui::plot::Line::new(egui::plot::Values::from_values_iter(
-                    values_iter,
-                )));
+                plot_ui.line(egui::plot::Line::new(
+                    self.measurements.lock().unwrap().into_plot_values(),
+                ));
             });
         });
+        // make it always repaint. TODO: can we slow down here?
+        ctx.request_repaint();
     }
 }
 
+use clap::Parser;
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[clap(author, version, about)]
+struct Args {
+    /// Name of the person to greet
+    #[clap(short, long, default_value_t = 1000)]
+    window_size: usize,
+}
+
 fn main() {
-    let app = MonitorApp::default();
+    let args = Args::parse();
+
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(tracing::Level::TRACE)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
+
+    let app = MonitorApp::new(args.window_size);
     let native_options = eframe::NativeOptions::default();
+
+    let monitor_ref = app.measurements.clone();
+
+    thread::spawn(move || {
+        let stdin = std::io::stdin();
+        for line in stdin.lock().lines() {
+            match line {
+                Ok(s) => {
+                    let parts = s.split(' ').collect::<Vec<&str>>();
+                    if parts.len() != 2 {
+                        warn!("Need exactly two parts: {}", s);
+                        continue;
+                    }
+
+                    let x = parts.first().expect("Have 2 parts");
+                    let y = parts.last().expect("Have 2 parts");
+
+                    let x = match x.parse::<f64>() {
+                        Ok(value) => value,
+                        _ => {
+                            warn!("Failed to parse {}", x);
+                            continue;
+                        }
+                    };
+
+                    let y = match y.parse::<f64>() {
+                        Ok(value) => value,
+                        _ => {
+                            warn!("Failed to parse {}", x);
+                            continue;
+                        }
+                    };
+
+                    monitor_ref
+                        .lock()
+                        .unwrap()
+                        .add(measurements::Measurement::new(x, y));
+                }
+                _ => {
+                    error!("Failed to read line");
+                    break;
+                }
+            }
+        }
+    });
+
+    info!("Main thread started");
     eframe::run_native(Box::new(app), native_options);
 }

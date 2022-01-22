@@ -6,30 +6,11 @@ pub struct Measurement {
     pub y: f64,
 }
 
+unsafe impl Send for Measurement {}
+
 impl Measurement {
     pub fn new(x: f64, y: f64) -> Self {
         Self { x, y }
-    }
-}
-
-struct MeasurementIntoIterator<Iter> {
-    iter: Iter,
-}
-
-impl<Iter> Iterator for MeasurementIntoIterator<Iter>
-where
-    Iter: Iterator<Item = Measurement>,
-{
-    type Item = egui::plot::Value;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some(measurement) => Some(egui::plot::Value {
-                x: measurement.x,
-                y: measurement.y,
-            }),
-            None => None,
-        }
     }
 }
 
@@ -40,7 +21,7 @@ pub struct MeasurementWindow {
 }
 
 impl MeasurementWindow {
-    pub fn new_with_look_beind(look_behind: usize) -> Self {
+    pub fn new_with_look_behind(look_behind: usize) -> Self {
         Self {
             values: VecDeque::new(),
             look_behind,
@@ -64,6 +45,14 @@ impl MeasurementWindow {
             self.values.pop_front();
         }
     }
+
+    pub fn into_plot_values(&self) -> egui::plot::Values {
+        egui::plot::Values::from_values_iter(
+            self.values
+                .iter()
+                .map(|m| egui::plot::Value { x: m.x, y: m.y }),
+        )
+    }
 }
 
 #[cfg(test)]
@@ -72,14 +61,14 @@ mod test {
 
     #[test]
     fn empty_measurements() {
-        let w = MeasurementWindow::new_with_look_beind(123);
+        let w = MeasurementWindow::new_with_look_behind(123);
         assert_eq!(w.values.len(), 0);
         assert_eq!(w.look_behind, 123);
     }
 
     #[test]
     fn appends_one_value() {
-        let mut w = MeasurementWindow::new_with_look_beind(100);
+        let mut w = MeasurementWindow::new_with_look_behind(100);
 
         w.add(Measurement::new(10.0, 20.0));
         assert_eq!(
@@ -90,7 +79,7 @@ mod test {
 
     #[test]
     fn clears_on_out_of_order() {
-        let mut w = MeasurementWindow::new_with_look_beind(100);
+        let mut w = MeasurementWindow::new_with_look_behind(100);
 
         w.add(Measurement::new(10.0, 20.0));
         w.add(Measurement::new(20.0, 30.0));
@@ -103,7 +92,7 @@ mod test {
 
     #[test]
     fn appends_several_values() {
-        let mut w = MeasurementWindow::new_with_look_beind(100);
+        let mut w = MeasurementWindow::new_with_look_behind(100);
 
         for x in 1..=20 {
             w.add(Measurement::new((x as f64) * 10.0, x as f64));
