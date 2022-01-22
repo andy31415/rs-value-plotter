@@ -56,7 +56,7 @@ impl epi::App for MonitorApp {
 
             plot.show(ui, |plot_ui| {
                 plot_ui.line(egui::plot::Line::new(
-                    self.measurements.lock().unwrap().into_plot_values(),
+                    self.measurements.lock().unwrap().plot_values(),
                 ));
             });
         });
@@ -89,7 +89,7 @@ fn main() {
 
     let mut app = MonitorApp::new(args.window_size);
 
-    app.include_y = args.include_y.clone();
+    app.include_y = args.include_y;
 
     let native_options = eframe::NativeOptions::default();
 

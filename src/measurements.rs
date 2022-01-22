@@ -34,8 +34,8 @@ impl MeasurementWindow {
         }
     }
 
-    pub fn into_plot_values(&self) -> egui::plot::Values {
-        egui::plot::Values::from_values_iter(self.values.iter().map(|m| m.clone()))
+    pub fn plot_values(&self) -> egui::plot::Values {
+        egui::plot::Values::from_values_iter(self.values.iter().copied())
     }
 }
 
