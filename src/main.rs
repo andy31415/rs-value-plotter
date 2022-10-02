@@ -1,7 +1,8 @@
 mod measurements;
 
 use crate::measurements::MeasurementWindow;
-use eframe::{egui, epi};
+use eframe::egui;
+use eframe;
 
 use std::io::BufRead;
 use std::sync::*;
@@ -24,30 +25,17 @@ impl MonitorApp {
     }
 }
 
-impl epi::App for MonitorApp {
-    fn name(&self) -> &str {
-        "Monitor App"
-    }
-
-    /// Called once before the first frame.
-    fn setup(
-        &mut self,
-        _ctx: &egui::CtxRef,
-        _frame: &epi::Frame,
-        _storage: Option<&dyn epi::Storage>,
-    ) {
-    }
-
+impl eframe::App for MonitorApp {
     /// Called by the frame work to save state before shutdown.
     /// Note that you must enable the `persistence` feature for this to work.
     #[cfg(feature = "persistence")]
-    fn save(&mut self, storage: &mut dyn epi::Storage) {
-        epi::set_value(storage, epi::APP_KEY, self);
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
-    fn update(&mut self, ctx: &egui::CtxRef, _frame: &epi::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut plot = egui::plot::Plot::new("measurements");
             for y in self.include_y.iter() {
@@ -139,5 +127,7 @@ fn main() {
     });
 
     info!("Main thread started");
-    eframe::run_native(Box::new(app), native_options);
+    eframe::run_native(
+        "Monitor app", native_options,
+        Box::new(|_| Box::new(app)));
 }
