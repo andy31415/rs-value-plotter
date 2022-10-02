@@ -2,7 +2,6 @@ mod measurements;
 
 use crate::measurements::MeasurementWindow;
 use eframe::egui;
-use eframe;
 
 use std::io::BufRead;
 use std::sync::*;
@@ -127,7 +126,5 @@ fn main() {
     });
 
     info!("Main thread started");
-    eframe::run_native(
-        "Monitor app", native_options,
-        Box::new(|_| Box::new(app)));
+    eframe::run_native("Monitor app", native_options, Box::new(|_| Box::new(app)));
 }
