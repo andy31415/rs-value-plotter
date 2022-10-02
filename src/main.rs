@@ -58,7 +58,7 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[clap(author, version, about)]
 struct Args {
-    /// Name of the person to greet
+    /// Look-behind window size
     #[clap(short, long, default_value_t = 1000)]
     window_size: usize,
 
